@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Simple Tools — 3-dot menu (horizontal)</title>
+<style>
+  :root{
+    --bg:#fff; --fg:#000; --accent:#007BFF;
+    --menu-w:260px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:Arial, sans-serif;
+    background:var(--bg); color:var(--fg);
+    min-height:100vh;
+  }
+
+  /* horizontal 3-dot button */
+  .menu-button{
+    position:fixed;
+    top:14px; left:14px;
+    height:44px; padding:8px 12px;
+    display:inline-flex; gap:8px;
+    align-items:center; justify-content:center;
+    background:#f2f2f2; border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
+    cursor:pointer; z-index:9999;
+  }
+  .menu-button span{
+    display:inline-block; width:7px; height:7px; background:var(--fg);
+    border-radius:50%;
+  }
+
+  /* menu panel */
+  .menu-panel{
+    position:fixed; top:64px; left:14px;
+    width:var(--menu-w); max-height:0; overflow:hidden;
+    background:#fafafa; border:1px solid #e3e3e3; border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    transition: max-height .36s cubic-bezier(.2,.9,.2,1), padding .2s;
+    z-index:9998; padding:0 18px;
+  }
+  .menu-panel.open{ max-height:420px; padding:14px 18px; }
+  .menu-panel h3{ margin:0 0 10px; font-size:1.05rem; }
+  .menu-panel ul{ list-style:none; margin:0; padding:0; }
+  .menu-panel li{
+    padding:10px 6px; margin:6px 0;
+    font-weight:600; cursor:pointer; border-bottom:1px solid #eee;
+    line-height:1.2; border-radius:6px;
+  }
+  .menu-panel li:hover{ background:#f0f8ff; color:var(--accent); }
+  .menu-panel li.more-toggle{ text-align:center; font-weight:700; color:var(--accent); border-bottom:0; background:transparent; margin-top:6px; }
+
+  /* hide extra items until expanded */
+  .menu-panel .extra{ display:none; }
+  .menu-panel.expanded .extra{ display:block; }
+
+  /* main content */
+  main{ max-width:720px; margin:110px auto; padding:20px; }
+  .tool-container{ border:1px solid #e7e7e7; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.04); background:var(--bg); }
+  h2{ margin-top:0; }
+  label{ display:block; margin-bottom:8px; font-weight:700; }
+  input[type="text"], input[type="number"], select{
+    width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; margin-bottom:12px; font-size:1rem;
+  }
+  button{ width:100%; padding:12px; border-radius:8px; border:0; background:var(--accent); color:#fff; font-weight:800; cursor:pointer; }
+  button:hover{ filter:brightness(.95) }
+
+  .results{ margin-top:16px; min-height:56px; }
+  .styled-text{ padding:8px 12px; border-radius:8px; background:#f6f6f6; margin-bottom:8px; font-weight:700; word-break:break-word; }
+
+  /* responsive */
+  @media (max-width:420px){
+    .menu-panel{ left:10px; width:220px; }
+    main{ margin-top:120px; padding:14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- horizontal 3-dot button -->
+<div class="menu-button" id="menuButton" role="button" aria-label="Open menu" tabindex="0">
+  <span></span><span></span><span></span>
+</div>
+
+<!-- menu panel: primary items shown, extra hidden until "More tools" -->
+<nav class="menu-panel" id="menuPanel" aria-label="Tools menu">
+  <h3>Simple Tools</h3>
+  <ul id="menuList">
+    <li data-tool="name">Name Styler (Fancy Fonts)</li>
+    <li data-tool="calc">Calculator</li>
+    <li data-tool="todo">To-Do List</li>
+    <li data-tool="quote">Random Quote</li>
+
+    <!-- extra (hidden by default) -->
+    <li class="extra" data-tool="temp">Temperature Converter</li>
+    <li class="extra" data-tool="timer">Simple Timer</li>
+    <li class="extra" data-tool="unit">Unit Converter</li>
+    <li class="extra" data-tool="randnum">Random Number</li>
+
+    <!-- toggle -->
+    <li class="more-toggle" id="moreToggle">More tools ▾</li>
+  </ul>
+</nav>
+
+<main>
+  <section class="tool-container" id="toolContent" aria-live="polite" aria-atomic="true">
+    <h2>Welcome!</h2>
+    <p>Click the <strong>three dots</strong> button (top-left) to open the tools menu. The menu shows a short list by default — click <em>More tools</em> to expand.</p>
+  </section>
+</main>
+
+<script>
+  const menuBtn = document.getElementById('menuButton');
+  const menuPanel = document.getElementById('menuPanel');
+  const moreToggle = document.getElementById('moreToggle');
+  const toolContent = document.getElementById('toolContent');
+
+  // toggle open/close menu
+  function toggleMenu(open){
+    menuPanel.classList.toggle('open', open === undefined ? !menuPanel.classList.contains('open') : open);
+    // when opening, focus the panel for accessibility
+    if(menuPanel.classList.contains('open')) menuPanel.focus?.();
+  }
+
+  menuBtn.addEventListener('click', () => toggleMenu());
+  menuBtn.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') toggleMenu(); });
+
+  // more / less toggle
+  let expanded = false;
+  moreToggle.addEventListener('click', () => {
+    expanded = !expanded;
+    menuPanel.classList.toggle('expanded', expanded);
+    moreToggle.textContent = expanded ? 'Show less ▴' : 'More tools ▾';
+    // keep menu open and allow scrolling
+    menuPanel.classList.add('open');
+  });
+
+  // close on outside click
+  document.addEventListener('click', (e) => {
+    if (!menuPanel.contains(e.target) && !menuBtn.contains(e.target)) {
+      menuPanel.classList.remove('open');
+    }
+  });
+
+  // close on Esc
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') menuPanel.classList.remove('open');
+  });
+
+  // TOOL HANDLERS (clicking a menu item opens a tool and auto-closes the menu)
+  document.getElementById('menuList').addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-tool]');
+    if(!li) return;
+    const tool = li.dataset.tool;
+    openTool(tool);
+    // close menu after selection
+    menuPanel.classList.remove('open');
+  });
+
+  // ------------------------
+  // Tool implementations
+  // ------------------------
+  // common helper to set content
+  function setToolHTML(html){
+    toolContent.innerHTML = html;
+  }
+
+  // 1) Name Styler (renders many unicode styles; input text not appended with extra words)
+const fontStyles = [
+  {name:"Bold", map:"𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭".split(""), mapLower:"𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇".split("")},
+  {name:"Italic", map:"𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡".split(""), mapLower:"𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻".split("")},
+  {name:"Bold Italic", map:"𝑨𝑩𝑪𝑫𝑬𝑭𝑮𝑯𝑰𝑱𝑲𝑳𝑴𝑵𝑶𝑷𝑸𝑹𝑺𝑻𝑼𝑽𝑾𝑿𝒀𝒁".split(""), mapLower:"𝒂𝒃𝒄𝒅𝒆𝒇𝒈𝒉𝒊𝒋𝒌𝒍𝒎𝒏𝒐𝒑𝒒𝒓𝒔𝒕𝒖𝒗𝒘𝒙𝒚𝒛".split("")},
+  {name:"Script", map:"𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩".split(""), mapLower:"𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃".split("")},
+  {name:"Bold Script", map:"𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩".split(""), mapLower:"𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃".split("")},
+  {name:"Fraktur", map:"𝔄𝔅ℭ𝔇𝔈𝔉𝔊ℌℑ𝔍𝔎𝔏𝔐𝔑𝔒𝔓𝔔ℜ𝔖𝔗𝔘𝔙𝔚𝔛𝔜ℨ".split(""), mapLower:"𝔞𝔟𝔠𝔡𝔢𝔣𝔤𝔥𝔦𝔧𝔨𝔩𝔪𝔫𝔬𝔭𝔮𝔯𝔰𝔱𝔲𝔳𝔴𝔵𝔶𝔷".split("")},
+  {name:"Bold Fraktur", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
+  {name:"Double-struck", map:"𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ".split(""), mapLower:"𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫".split("")},
+  {name:"Sans-serif", map:"𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭".split(""), mapLower:"𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇".split("")},
+  {name:"Sans-serif Italic", map:"𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡".split(""), mapLower:"𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻".split("")},
+  {name:"Monospace", map:"𝙰𝙱𝙲𝙳𝙴𝙵𝙶𝙷𝙸𝙹𝙺𝙻𝙼𝙽𝙾𝙿𝚀𝚁𝚂𝚃𝚄𝚅𝚆𝚇𝚈𝚉".split(""), mapLower:"𝚊𝚋𝚌𝚍𝚎𝚏𝚐𝚑𝚒𝚓𝚔𝚕𝚖𝚗𝚘𝚙𝚚𝚛𝚜𝚝𝚞𝚟𝚠𝚡𝚢𝚣".split("")},
+  {name:"Circled", map:"ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ".split(""), mapLower:"ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ".split("")},
+  {name:"Parenthesized", map:"⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵".split(""), mapLower:"⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵".split("")},
+  {name:"Fullwidth", map:"ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ".split(""), mapLower:"ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ".split("")},
+  {name:"Small Caps", map:"ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ".split(""), mapLower:"ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ".split("")},
+  {name:"Superscript", map:"ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᑫᴿˢᵀᵁⱽᵂˣʸᶻ".split(""), mapLower:"ᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖᑫʳˢᵗᵘᵛʷˣʸᶻ".split("")},
+  {name:"Subscript", map:"ₐₑ꜀ₑₒₚᵣₛₜᵤᵥₓ".split(""), mapLower:"ₐₑ꜀ₑₒₚᵣₛₜᵤᵥₓ".split("")},
+  {name:"Old English", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
+  {name:"Boxed", map:"🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉".split(""), mapLower:"🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉".split("")},
+  {name:"Square", map:"🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉".split(""), mapLower:"🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉".split("")},
+  {name:"Italic Fraktur", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
+  // Add more here, feel free to expand!
+];
+
+// Show Name Styler UI + logic
+function showNameStyler(){
+  setToolHTML(`
+    <h2>Name Styler (Fancy Fonts)</h2>
+    <label for="nameInput">Enter your name or any text (only your input text will be styled):</label>
+    <input id="nameInput" type="text" placeholder="Type here..." autocomplete="off" />
+    <button id="styleBtn">Show Styles</button>
+    <div class="results" id="styledResults" style="max-height:400px; overflow-y:auto; margin-top:12px;"></div>
+  `);
+
+  const btn = document.getElementById('styleBtn');
+  const input = document.getElementById('nameInput');
+  const out = document.getElementById('styledResults');
+
+  btn.addEventListener('click', () => {
+    const val = input.value.trim();
+    if(!val){
+      out.textContent = "Please enter some text!";
+      return;
+    }
+    out.innerHTML = "";
+    let count = 0;
+    for(let i=0; i < fontStyles.length && count < 100; i++){
+      const style = fontStyles[i];
+      const styled = transformText(val, style);
+      const div = document.createElement('div');
+      div.className = 'styled-text';
+      div.title = style.name;
+      div.textContent = styled;
+      out.appendChild(div);
+      count++;
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') btn.click();
+  });
+}
+
+// Helper function transforms input text using given style maps
+function transformText(text, style){
+  let result = "";
+  for(const ch of text){
+    if(ch >= 'A' && ch <= 'Z'){
+      result += style.map[ch.charCodeAt(0)-65] || ch;
+    } else if(ch >= 'a' && ch <= 'z'){
+      result += style.mapLower[ch.charCodeAt(0)-97] || ch;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+
+    const btn = document.getElementById('styleBtn');
+    const input = document.getElementById('nameInput');
+    const out = document.getElementById('styledResults');
+
+    btn.addEventListener('click', () => {
+      const v = input.value.trim();
+      if(!v){ out.textContent = 'Please enter text.'; return; }
+      out.innerHTML = '';
+      // show first 10 style variations repeated to reach many (you can replace with more unique maps later)
+      let count = 0;
+      for(let rep=1; rep<=10; rep++){
+        for(let i=0;i<fontStyles.length;i++){
+          if(count>=100) break;
+          const s = transformText(v, fontStyles[i]);
+          const d = document.createElement('div');
+          d.className='styled-text';
+          d.textContent = s;
+          d.title = `${fontStyles[i].name} #${rep}`;
+          out.appendChild(d);
+          count++;
+        }
+      }
+    });
+
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') btn.click(); });
+
+  // Calculator
+  function showCalculator(){
+    setToolHTML(`
+      <h2>Simple Calculator</h2>
+      <label for="calcInput">Expression (e.g. 5+3*2):</label>
+      <input id="calcInput" type="text" placeholder="5+3*2" />
+      <button id="calcBtn">Calculate</button>
+      <div class="results" id="calcResult"></div>
+    `);
+    const btn = document.getElementById('calcBtn'), inp = document.getElementById('calcInput'), res = document.getElementById('calcResult');
+    btn.addEventListener('click', () => {
+      const expr = inp.value.trim();
+      if(!expr){ res.textContent='Enter expression.'; return; }
+      if(/[^0-9+\-*/().\s]/.test(expr)){ res.textContent='Invalid characters.'; return; }
+      try{ res.textContent = 'Result: ' + Function('"use strict";return ('+expr+')')(); } catch{ res.textContent='Error in expression.'; }
+    });
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') btn.click(); });
+  }
+
+  // To-Do
+  function showTodo(){
+    setToolHTML(`
+      <h2>To-Do List</h2>
+      <label for="todoInput">New task:</label>
+      <input id="todoInput" type="text" placeholder="Add task..." />
+      <button id="addTodoBtn">Add Task</button>
+      <ul id="todoList" style="margin-top:12px; padding-left:18px;"></ul>
+    `);
+    const add = document.getElementById('addTodoBtn'), inp = document.getElementById('todoInput'), ul = document.getElementById('todoList');
+    add.addEventListener('click', ()=>{
+      const t = inp.value.trim(); if(!t) return;
+      const li = document.createElement('li'); li.textContent = t; li.style.cursor='pointer';
+      li.addEventListener('click', ()=> li.remove());
+      ul.appendChild(li); inp.value='';
+    });
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') add.click(); });
+  }
+
+  // Quote
+  function showQuote(){
+    const quotes = [
+      "Life is what happens when you're busy making other plans.",
+      "The purpose of our lives is to be happy.",
+      "Get busy living or get busy dying.",
+      "You only live once, but if you do it right, once is enough.",
+      "In the end, we only regret the chances we didn’t take."
+    ];
+    setToolHTML(`
+      <h2>Random Quote</h2>
+      <button id="newQuoteBtn">Get Quote</button>
+      <div class="results" id="quoteDisplay" style="font-style:italic; margin-top:12px;"></div>
+    `);
+    const btn = document.getElementById('newQuoteBtn'), out = document.getElementById('quoteDisplay');
+    function rnd(){ out.textContent = quotes[Math.floor(Math.random()*quotes.length)]; }
+    btn.addEventListener('click', rnd); rnd();
+  }
+
+  // Temperature converter
+  function showTemp(){
+    setToolHTML(`
+      <h2>Temperature Converter</h2>
+      <label for="tempInput">Temperature:</label>
+      <input id="tempInput" type="number" placeholder="25" />
+      <select id="tempUnit"><option value="c">C → F</option><option value="f">F → C</option></select>
+      <button id="convTemp">Convert</button>
+      <div class="results" id="tempResult"></div>
+    `);
+    const btn = document.getElementById('convTemp'), inp = document.getElementById('tempInput'), unit = document.getElementById('tempUnit'), out = document.getElementById('tempResult');
+    btn.addEventListener('click', ()=>{
+      const v = parseFloat(inp.value); if(isNaN(v)){ out.textContent='Enter valid number.'; return; }
+      if(unit.value==='c'){ out.textContent = `${v} °C = ${((v*9/5)+32).toFixed(2)} °F`; }
+      else { out.textContent = `${v} °F = ${(((v-32)*5/9)).toFixed(2)} °C`; }
+    });
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') btn.click(); });
+  }
+
+  // extra small tools (timer, random number, unit converter)
+  function showTimer(){
+    setToolHTML(`
+      <h2>Simple Timer</h2>
+      <label>Seconds:</label><input id="timerInput" type="number" placeholder="10" />
+      <button id="startTimer">Start</button>
+      <div class="results" id="timerDisplay"></div>
+    `);
+    const start = document.getElementById('startTimer'), inp = document.getElementById('timerInput'), out = document.getElementById('timerDisplay');
+    let tmr=null;
+    start.addEventListener('click', ()=>{
+      clearInterval(tmr);
+      let s = parseInt(inp.value); if(isNaN(s) || s<=0){ out.textContent='Enter positive seconds.'; return; }
+      out.textContent = `Remaining: ${s}s`;
+      tmr = setInterval(()=>{ s--; if(s<=0){ clearInterval(tmr); out.textContent='Time up!'; } else out.textContent=`Remaining: ${s}s`; },1000);
+    });
+  }
+  function showRandNum(){
+    setToolHTML(`
+      <h2>Random Number</h2>
+      <label>Min:</label><input id="minN" type="number" value="1" />
+      <label>Max:</label><input id="maxN" type="number" value="100" />
+      <button id="genNum">Generate</button>
+      <div class="results" id="numRes"></div>
+    `);
+    const gen = document.getElementById('genNum'), out = document.getElementById('numRes');
+    gen.addEventListener('click', ()=>{
+      const a = parseInt(document.getElementById('minN').value), b = parseInt(document.getElementById('maxN').value);
+      if(isNaN(a)||isNaN(b)||a>b){ out.textContent='Enter valid min and max (min ≤ max).'; return; }
+      out.textContent = Math.floor(Math.random()*(b-a+1))+a;
+    });
+  }
+
+  function openTool(name){
+    switch(name){
+      case 'name': showNameStyler(); break;
+      case 'calc': showCalculator(); break;
+      case 'todo': showTodo(); break;
+      case 'quote': showQuote(); break;
+      case 'temp': showTemp(); break;
+      case 'timer': showTimer(); break;
+      case 'randnum': showRandNum(); break;
+      default: setToolHTML(`<h2>Unknown tool</h2>`);
+    }
+  }
+
+  // expose setToolHTML for internal use
+  function setToolHTML(html){ toolContent.innerHTML = html; }
+
+  // optional: open first tool by default
+  // openTool('name');
+</script>
+
+</body>
+</html>
