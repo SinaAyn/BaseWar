@@ -1,407 +1,668 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Simple Tools — 3-dot menu (horizontal)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BaseWar</title>
 <style>
   :root{
-    --bg:#fff; --fg:#000; --accent:#007BFF;
-    --menu-w:260px;
+    --bg:#000;
+    --panel:#141414;
+    --panel-2:#1b1b1b;
+    --text:#f5f5f5;
+    --acc:#34d399;
+    --warn:#f59e0b;
+    --danger:#ef4444;
+    --muted:#888;
+    --glow:0 0 20px rgba(52,211,153,.25);
   }
   *{box-sizing:border-box}
   body{
-    margin:0; font-family:Arial, sans-serif;
-    background:var(--bg); color:var(--fg);
-    min-height:100vh;
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+    color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 70% -20%, #101010 0%, #060606 60%, #000 100%),
+      var(--bg);
+    height:100vh;
+    display:grid;
+    grid-template-columns: 230px 1fr;
+    grid-template-rows: 64px 1fr;
+    grid-template-areas:
+      "top top"
+      "side main";
+    overflow:hidden;
   }
 
-  /* horizontal 3-dot button */
-  .menu-button{
-    position:fixed;
-    top:14px; left:14px;
-    height:44px; padding:8px 12px;
-    display:inline-flex; gap:8px;
-    align-items:center; justify-content:center;
-    background:#f2f2f2; border-radius:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,.08);
-    cursor:pointer; z-index:9999;
+  /* Top bar */
+  .top{grid-area:top; display:flex; align-items:center; gap:12px; padding:0 16px; background:#0d0d0d; border-bottom:1px solid #202020; position:sticky; top:0; z-index:5}
+  .gear{
+    width:36px; height:36px; display:inline-grid; place-items:center; filter:drop-shadow(0 0 6px rgba(255,255,255,.08));
+    animation:gearspin 6s linear infinite;
   }
-  .menu-button span{
-    display:inline-block; width:7px; height:7px; background:var(--fg);
-    border-radius:50%;
+  @keyframes gearspin { to{ transform:rotate(360deg);} }
+  .title{ font-weight:800; letter-spacing:.5px; font-size:18px }
+
+  /* Side menu */
+  .side{grid-area:side; background:var(--panel); border-right:1px solid #202020; padding:10px; overflow:auto}
+  .menu-btn{
+    width:100%; text-align:left; padding:12px 12px; border-radius:10px;
+    background:linear-gradient(180deg,#191919,#141414); border:1px solid #222;
+    margin-bottom:8px; cursor:pointer; transition:.15s transform, .2s box-shadow, .2s background;
+  }
+  .menu-btn:hover{ transform:translateY(-1px); box-shadow:var(--glow); background:linear-gradient(180deg,#1f1f1f,#161616)}
+  .menu-btn.active{ outline:2px solid #2a2a2a; background:#1b1b1b }
+
+  /* Main */
+  .main{grid-area:main; padding:16px; overflow:auto}
+  .tool{ display:none; animation:fade .35s ease}
+  .tool.active{ display:block }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+
+  /* Cards / layout helpers */
+  .row{ display:flex; gap:16px; flex-wrap:wrap }
+  .card{
+    background:linear-gradient(180deg,#151515,#101010);
+    border:1px solid #222; border-radius:16px; padding:14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  .card h3{ margin:0 0 10px 0; font-size:15px; letter-spacing:.4px; color:#eaeaea }
+  .muted{ color:var(--muted); font-size:12px }
+  .btn{
+    border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:600;
+    background:#1f2937; color:#fff; border:1px solid #2b3442; transition:.15s transform, .2s box-shadow, .2s background;
+  }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.35) }
+  .btn.acc{ background:#0f2f25; border-color:#134e4a }
+  .btn.warn{ background:#3a2a10; border-color:#4b3410 }
+  .btn.danger{ background:#3a1010; border-color:#4b1010 }
+
+  input, textarea{
+    width:100%; background:#0f0f0f; color:#fff; border:1px solid #222; border-radius:10px; padding:10px;
+    outline:none; transition:border-color .2s, box-shadow .2s;
+  }
+  textarea{ min-height:130px; resize:vertical }
+  input:focus, textarea:focus{ border-color:#2a2a2a; box-shadow:var(--glow) }
+
+  /* Spinner */
+  .spinner-wrap{ display:grid; grid-template-columns: 420px 1fr; gap:16px; align-items:start }
+  .canvas-wrap{
+    position:relative; width:420px; height:420px; display:grid; place-items:center;
+  }
+  canvas{ background:#0a0a0a; border-radius:50%; border:1px solid #222; box-shadow: inset 0 0 40px rgba(255,255,255,.05), 0 0 50px rgba(0,0,0,.6)}
+  .pointer{
+    position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-bottom:20px solid #e5e7eb;
+    filter:drop-shadow(0 6px 8px rgba(0,0,0,.4));
+  }
+  .spin-controls .row > *{ flex:1 1 160px }
+
+  .result{
+    font-size:18px; padding:12px; border-radius:12px; background:#121212; border:1px solid #232323;
+    display:flex; align-items:center; gap:10px;
+  }
+  .dot{ width:8px; height:8px; border-radius:50%; background:var(--acc); box-shadow:0 0 10px rgba(52,211,153,.7) }
+
+  /* Timer with circular progress */
+  .timer-shell{
+    width:240px; height:240px; border-radius:50%;
+    background:conic-gradient(var(--acc) var(--p,0%), #222 0);
+    display:grid; place-items:center; transition:background .2s linear;
+    box-shadow:0 0 40px rgba(52,211,153,.15), inset 0 0 30px rgba(0,0,0,.6);
+    border:1px solid #243b33;
+  }
+  .timer-face{
+    width:200px; height:200px; border-radius:50%; display:grid; place-items:center;
+    background:#0a0f0d; border:1px solid #1d2c26; box-shadow: inset 0 0 40px rgba(0,0,0,.65);
+    font-weight:800; letter-spacing:1px; font-size:42px;
+  }
+  .timer-ctrls .row > *{ flex:1 1 120px }
+
+  /* Stopwatch */
+  .big-num{ font-size:32px; font-weight:800; }
+
+  /* Coin flip */
+  .coin{
+    width:120px; height:120px; border-radius:50%; border:1px solid #333;
+    display:grid; place-items:center; perspective:700px; background:#111;
+    box-shadow: inset 0 0 24px rgba(255,255,255,.05), 0 8px 26px rgba(0,0,0,.45);
+  }
+  .coin-face{
+    width:82%; height:82%; border-radius:50%; background:radial-gradient(circle at 30% 30%, #f5f5f5, #bfbfbf 55%, #8a8a8a);
+    display:grid; place-items:center; color:#111; font-weight:900; font-size:22px; backface-visibility:hidden;
+    position:absolute; transform-style:preserve-3d;
+  }
+  .coin-face.back{ transform:rotateY(180deg) }
+  .coin.flip .coin-face{ animation:flip 1s ease-in-out forwards }
+  @keyframes flip{
+    0%{ transform:rotateY(0) translateZ(1px)}
+    50%{ transform:rotateY(720deg) translateZ(1px)}
+    100%{ transform:rotateY(900deg) translateZ(1px)}
   }
 
-  /* menu panel */
-  .menu-panel{
-    position:fixed; top:64px; left:14px;
-    width:var(--menu-w); max-height:0; overflow:hidden;
-    background:#fafafa; border:1px solid #e3e3e3; border-radius:10px;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
-    transition: max-height .36s cubic-bezier(.2,.9,.2,1), padding .2s;
-    z-index:9998; padding:0 18px;
-  }
-  .menu-panel.open{ max-height:420px; padding:14px 18px; }
-  .menu-panel h3{ margin:0 0 10px; font-size:1.05rem; }
-  .menu-panel ul{ list-style:none; margin:0; padding:0; }
-  .menu-panel li{
-    padding:10px 6px; margin:6px 0;
-    font-weight:600; cursor:pointer; border-bottom:1px solid #eee;
-    line-height:1.2; border-radius:6px;
-  }
-  .menu-panel li:hover{ background:#f0f8ff; color:var(--accent); }
-  .menu-panel li.more-toggle{ text-align:center; font-weight:700; color:var(--accent); border-bottom:0; background:transparent; margin-top:6px; }
-
-  /* hide extra items until expanded */
-  .menu-panel .extra{ display:none; }
-  .menu-panel.expanded .extra{ display:block; }
-
-  /* main content */
-  main{ max-width:720px; margin:110px auto; padding:20px; }
-  .tool-container{ border:1px solid #e7e7e7; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.04); background:var(--bg); }
-  h2{ margin-top:0; }
-  label{ display:block; margin-bottom:8px; font-weight:700; }
-  input[type="text"], input[type="number"], select{
-    width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; margin-bottom:12px; font-size:1rem;
-  }
-  button{ width:100%; padding:12px; border-radius:8px; border:0; background:var(--accent); color:#fff; font-weight:800; cursor:pointer; }
-  button:hover{ filter:brightness(.95) }
-
-  .results{ margin-top:16px; min-height:56px; }
-  .styled-text{ padding:8px 12px; border-radius:8px; background:#f6f6f6; margin-bottom:8px; font-weight:700; word-break:break-word; }
-
-  /* responsive */
-  @media (max-width:420px){
-    .menu-panel{ left:10px; width:220px; }
-    main{ margin-top:120px; padding:14px; }
+  /* Responsive */
+  @media (max-width: 1024px){
+    .spinner-wrap{ grid-template-columns: 1fr; }
+    .canvas-wrap{ margin-inline:auto }
   }
 </style>
 </head>
 <body>
+  <!-- Top bar -->
+  <div class="top">
+    <!-- inline SVG gear (no external fetch) -->
+    <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" stroke-width="1.3">
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.1 1.1a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 8.2 8.2 0 0 1-2 .8 1 1 0 0 0-.7.9V21a1 1 0 0 1-1 1h-1.6a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.7-.9 8.2 8.2 0 0 1-2-.8 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.3 17.6a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 8.2 8.2 0 0 1-.8-2 1 1 0 0 0-.9-.7H2a1 1 0 0 1-1-1V9.7a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.7 8.2 8.2 0 0 1 .8-2 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4L4.5 1.9a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2 8.2 8.2 0 0 1 2-.8 1 1 0 0 0 .7-.9V.9a1 1 0 0 1 1-1h1.6a1 1 0 0 1 1 1v.2a1 1 0 0 0 .7.9 8.2 8.2 0 0 1 2 .8 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.1 1.1a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1 8.2 8.2 0 0 1 .8 2 1 1 0 0 0 .9.7H22a1 1 0 0 1 1 1v1.6a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.7 8.2 8.2 0 0 1-.8 2Z"/>
+    </svg>
+    <div class="title">BaseWar</div>
+  </div>
 
-<!-- horizontal 3-dot button -->
-<div class="menu-button" id="menuButton" role="button" aria-label="Open menu" tabindex="0">
-  <span></span><span></span><span></span>
-</div>
+  <!-- Side menu -->
+  <aside class="side">
+    <button class="menu-btn active" data-tool="spin">🎯 Spin Wheel</button>
+    <button class="menu-btn" data-tool="timer">⏱️ Timer</button>
+    <button class="menu-btn" data-tool="basic">🧰 Basic Tools</button>
+  </aside>
 
-<!-- menu panel: primary items shown, extra hidden until "More tools" -->
-<nav class="menu-panel" id="menuPanel" aria-label="Tools menu">
-  <h3>Simple Tools</h3>
-  <ul id="menuList">
-    <li data-tool="name">Name Styler (Fancy Fonts)</li>
-    <li data-tool="calc">Calculator</li>
-    <li data-tool="todo">To-Do List</li>
-    <li data-tool="quote">Random Quote</li>
+  <!-- Main -->
+  <main class="main">
+    <!-- SPIN WHEEL -->
+    <section id="spin" class="tool active">
+      <div class="row" style="align-items:center; justify-content:space-between">
+        <h2 style="margin:0">Spin Wheel (Missions)</h2>
+        <div class="muted">Up to <strong>11</strong> missions • Google-style spinner</div>
+      </div>
 
-    <!-- extra (hidden by default) -->
-    <li class="extra" data-tool="temp">Temperature Converter</li>
-    <li class="extra" data-tool="timer">Simple Timer</li>
-    <li class="extra" data-tool="unit">Unit Converter</li>
-    <li class="extra" data-tool="randnum">Random Number</li>
+      <div class="spinner-wrap">
+        <!-- Wheel -->
+        <div class="card canvas-wrap">
+          <div class="pointer"></div>
+          <canvas id="wheel" width="400" height="400" aria-label="Mission spinner"></canvas>
+          <div class="row" style="width:100%; justify-content:center; gap:10px; margin-top:8px">
+            <button class="btn acc" id="spinBtn">SPIN</button>
+            <button class="btn" id="shuffleBtn" title="Randomize colors">Shuffle Colors</button>
+            <button class="btn" id="resetAngleBtn" title="Reset angle to zero">Center</button>
+          </div>
+        </div>
 
-    <!-- toggle -->
-    <li class="more-toggle" id="moreToggle">More tools ▾</li>
-  </ul>
-</nav>
+        <!-- Controls / Result -->
+        <div class="card" style="flex:1; min-width:280px">
+          <h3>Setup Missions</h3>
+          <div class="row">
+            <div style="flex:1">
+              <label class="muted">Number of missions (max 11)</label>
+              <input id="missionCount" type="number" min="2" max="11" value="6" />
+            </div>
+            <div style="flex:1">
+              <label class="muted">Spin duration (seconds)</label>
+              <input id="spinSecs" type="number" min="2" max="8" value="4" />
+            </div>
+          </div>
 
-<main>
-  <section class="tool-container" id="toolContent" aria-live="polite" aria-atomic="true">
-    <h2>Welcome!</h2>
-    <p>Click the <strong>three dots</strong> button (top-left) to open the tools menu. The menu shows a short list by default — click <em>More tools</em> to expand.</p>
-  </section>
-</main>
+          <div style="margin-top:10px">
+            <label class="muted">Enter missions (one per line)</label>
+            <textarea id="missionText" placeholder="Write up to 11 missions, one per line...">Scout
+Defend
+Gather
+Upgrade
+Heal
+Sneak</textarea>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="btn warn" id="applyBtn">Apply Missions</button>
+            <button class="btn danger" id="clearBtn">Clear</button>
+          </div>
+
+          <div style="height:10px"></div>
+          <div class="result" id="resultBox"><span class="dot"></span><span id="resultText">Result: —</span></div>
+
+          <div style="margin-top:10px" class="muted">
+            Tip: The pointer is at the <strong>top</strong>. The wheel stops so the chosen mission sits under the pointer.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMER -->
+    <section id="timer" class="tool">
+      <h2>Countdown Timer</h2>
+      <div class="row">
+        <div class="card" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap">
+          <div class="timer-shell" id="timerShell" style="--p:0%">
+            <div class="timer-face" id="timerFace">00:00</div>
+          </div>
+          <div class="timer-ctrls" style="flex:1; min-width:260px">
+            <h3>Set Time</h3>
+            <div class="row">
+              <div><label class="muted">Minutes</label><input id="tMin" type="number" min="0" value="0"></div>
+              <div><label class="muted">Seconds</label><input id="tSec" type="number" min="0" max="59" value="10"></div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn acc" id="tStart">Start</button>
+              <button class="btn" id="tPause">Pause</button>
+              <button class="btn danger" id="tReset">Reset</button>
+            </div>
+            <div class="muted" style="margin-top:6px">Accurate second-by-second countdown with circular progress.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BASIC TOOLS -->
+    <section id="basic" class="tool">
+      <h2>Basic Tools</h2>
+      <div class="row">
+        <!-- Stopwatch -->
+        <div class="card" style="flex:1 1 280px">
+          <h3>Stopwatch</h3>
+          <div id="swTime" class="big-num">00:00.000</div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn acc" id="swStart">Start</button>
+            <button class="btn" id="swStop">Stop</button>
+            <button class="btn danger" id="swReset">Reset</button>
+          </div>
+        </div>
+
+        <!-- RNG -->
+        <div class="card" style="flex:1 1 280px">
+          <h3>Random Number</h3>
+          <div class="row">
+            <div><label class="muted">Min</label><input id="rngMin" type="number" value="1"></div>
+            <div><label class="muted">Max</label><input id="rngMax" type="number" value="100"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn acc" id="rngBtn">Generate</button>
+            <div id="rngOut" class="big-num" style="min-width:90px; text-align:right">—</div>
+          </div>
+        </div>
+
+        <!-- Coin -->
+        <div class="card" style="flex:1 1 280px; display:flex; gap:14px; align-items:center">
+          <div class="coin" id="coin">
+            <div class="coin-face front">H</div>
+            <div class="coin-face back">T</div>
+          </div>
+          <div>
+            <h3>Coin Flip</h3>
+            <div class="row">
+              <button class="btn acc" id="coinBtn">Flip</button>
+              <div id="coinOut" class="big-num">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
 <script>
-  const menuBtn = document.getElementById('menuButton');
-  const menuPanel = document.getElementById('menuPanel');
-  const moreToggle = document.getElementById('moreToggle');
-  const toolContent = document.getElementById('toolContent');
-
-  // toggle open/close menu
-  function toggleMenu(open){
-    menuPanel.classList.toggle('open', open === undefined ? !menuPanel.classList.contains('open') : open);
-    // when opening, focus the panel for accessibility
-    if(menuPanel.classList.contains('open')) menuPanel.focus?.();
-  }
-
-  menuBtn.addEventListener('click', () => toggleMenu());
-  menuBtn.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') toggleMenu(); });
-
-  // more / less toggle
-  let expanded = false;
-  moreToggle.addEventListener('click', () => {
-    expanded = !expanded;
-    menuPanel.classList.toggle('expanded', expanded);
-    moreToggle.textContent = expanded ? 'Show less ▴' : 'More tools ▾';
-    // keep menu open and allow scrolling
-    menuPanel.classList.add('open');
+/* -------------------- Navigation -------------------- */
+const menuBtns = document.querySelectorAll('.menu-btn');
+const tools = document.querySelectorAll('.tool');
+menuBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    menuBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const id = btn.dataset.tool;
+    tools.forEach(t=>t.classList.toggle('active', t.id===id));
   });
+});
 
-  // close on outside click
-  document.addEventListener('click', (e) => {
-    if (!menuPanel.contains(e.target) && !menuBtn.contains(e.target)) {
-      menuPanel.classList.remove('open');
-    }
-  });
+/* -------------------- Spinner (Canvas) -------------------- */
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const r = canvas.width/2; // 200
+let wheelAngle = 0; // radians
+let spinning = false;
 
-  // close on Esc
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') menuPanel.classList.remove('open');
-  });
+const missionText = document.getElementById('missionText');
+const missionCount = document.getElementById('missionCount');
+const spinSecs = document.getElementById('spinSecs');
+const resultText = document.getElementById('resultText');
 
-  // TOOL HANDLERS (clicking a menu item opens a tool and auto-closes the menu)
-  document.getElementById('menuList').addEventListener('click', (e) => {
-    const li = e.target.closest('li[data-tool]');
-    if(!li) return;
-    const tool = li.dataset.tool;
-    openTool(tool);
-    // close menu after selection
-    menuPanel.classList.remove('open');
-  });
+const applyBtn = document.getElementById('applyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const spinBtn = document.getElementById('spinBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const resetAngleBtn = document.getElementById('resetAngleBtn');
 
-  // ------------------------
-  // Tool implementations
-  // ------------------------
-  // common helper to set content
-  function setToolHTML(html){
-    toolContent.innerHTML = html;
-  }
+function getMissions(){
+  const raw = missionText.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const cap = Math.max(2, Math.min(11, parseInt(missionCount.value||raw.length||6)));
+  const arr = raw.slice(0, cap);
+  // if lines less than cap, pad with "Mission X"
+  while(arr.length < cap) arr.push('Mission '+(arr.length+1));
+  return arr;
+}
 
-  // 1) Name Styler (renders many unicode styles; input text not appended with extra words)
-const fontStyles = [
-  {name:"Bold", map:"𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭".split(""), mapLower:"𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇".split("")},
-  {name:"Italic", map:"𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡".split(""), mapLower:"𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻".split("")},
-  {name:"Bold Italic", map:"𝑨𝑩𝑪𝑫𝑬𝑭𝑮𝑯𝑰𝑱𝑲𝑳𝑴𝑵𝑶𝑷𝑸𝑹𝑺𝑻𝑼𝑽𝑾𝑿𝒀𝒁".split(""), mapLower:"𝒂𝒃𝒄𝒅𝒆𝒇𝒈𝒉𝒊𝒋𝒌𝒍𝒎𝒏𝒐𝒑𝒒𝒓𝒔𝒕𝒖𝒗𝒘𝒙𝒚𝒛".split("")},
-  {name:"Script", map:"𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩".split(""), mapLower:"𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃".split("")},
-  {name:"Bold Script", map:"𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩".split(""), mapLower:"𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃".split("")},
-  {name:"Fraktur", map:"𝔄𝔅ℭ𝔇𝔈𝔉𝔊ℌℑ𝔍𝔎𝔏𝔐𝔑𝔒𝔓𝔔ℜ𝔖𝔗𝔘𝔙𝔚𝔛𝔜ℨ".split(""), mapLower:"𝔞𝔟𝔠𝔡𝔢𝔣𝔤𝔥𝔦𝔧𝔨𝔩𝔪𝔫𝔬𝔭𝔮𝔯𝔰𝔱𝔲𝔳𝔴𝔵𝔶𝔷".split("")},
-  {name:"Bold Fraktur", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
-  {name:"Double-struck", map:"𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ".split(""), mapLower:"𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫".split("")},
-  {name:"Sans-serif", map:"𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭".split(""), mapLower:"𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇".split("")},
-  {name:"Sans-serif Italic", map:"𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡".split(""), mapLower:"𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻".split("")},
-  {name:"Monospace", map:"𝙰𝙱𝙲𝙳𝙴𝙵𝙶𝙷𝙸𝙹𝙺𝙻𝙼𝙽𝙾𝙿𝚀𝚁𝚂𝚃𝚄𝚅𝚆𝚇𝚈𝚉".split(""), mapLower:"𝚊𝚋𝚌𝚍𝚎𝚏𝚐𝚑𝚒𝚓𝚔𝚕𝚖𝚗𝚘𝚙𝚚𝚛𝚜𝚝𝚞𝚟𝚠𝚡𝚢𝚣".split("")},
-  {name:"Circled", map:"ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ".split(""), mapLower:"ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ".split("")},
-  {name:"Parenthesized", map:"⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵".split(""), mapLower:"⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵".split("")},
-  {name:"Fullwidth", map:"ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ".split(""), mapLower:"ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ".split("")},
-  {name:"Small Caps", map:"ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ".split(""), mapLower:"ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ".split("")},
-  {name:"Superscript", map:"ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᑫᴿˢᵀᵁⱽᵂˣʸᶻ".split(""), mapLower:"ᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖᑫʳˢᵗᵘᵛʷˣʸᶻ".split("")},
-  {name:"Subscript", map:"ₐₑ꜀ₑₒₚᵣₛₜᵤᵥₓ".split(""), mapLower:"ₐₑ꜀ₑₒₚᵣₛₜᵤᵥₓ".split("")},
-  {name:"Old English", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
-  {name:"Boxed", map:"🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉".split(""), mapLower:"🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉".split("")},
-  {name:"Square", map:"🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉".split(""), mapLower:"🅰🅱🅲🅳🅴🅵🅶🅷🅸🅹🅺🅻🅼🅽🅾🅿🆀🆁🆂🆃🆄🆅🆆🆇🆈🆉".split("")},
-  {name:"Italic Fraktur", map:"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅".split(""), mapLower:"𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟".split("")},
-  // Add more here, feel free to expand!
+// pleasant repeating color palette
+let baseColors = [
+  '#f87171','#fb923c','#fbbf24','#34d399','#60a5fa','#a78bfa',
+  '#f472b6','#22d3ee','#4ade80','#facc15','#c084fc'
 ];
+function shuffleColors(){
+  baseColors = baseColors
+    .map(c=>({c, k:Math.random()}))
+    .sort((a,b)=>a.k-b.k)
+    .map(o=>o.c);
+  drawWheel();
+}
 
-// Show Name Styler UI + logic
-function showNameStyler(){
-  setToolHTML(`
-    <h2>Name Styler (Fancy Fonts)</h2>
-    <label for="nameInput">Enter your name or any text (only your input text will be styled):</label>
-    <input id="nameInput" type="text" placeholder="Type here..." autocomplete="off" />
-    <button id="styleBtn">Show Styles</button>
-    <div class="results" id="styledResults" style="max-height:400px; overflow-y:auto; margin-top:12px;"></div>
-  `);
+function drawWheel(){
+  const missions = getMissions();
+  const n = missions.length;
+  const slice = (Math.PI*2)/n;
 
-  const btn = document.getElementById('styleBtn');
-  const input = document.getElementById('nameInput');
-  const out = document.getElementById('styledResults');
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(r, r);
+  ctx.rotate(wheelAngle);
 
-  btn.addEventListener('click', () => {
-    const val = input.value.trim();
-    if(!val){
-      out.textContent = "Please enter some text!";
+  // slices
+  for(let i=0;i<n;i++){
+    const start = i*slice;
+    const end = start + slice;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,r-6,start,end,false);
+    ctx.closePath();
+    ctx.fillStyle = baseColors[i % baseColors.length];
+    ctx.fill();
+
+    // slice separators
+    ctx.strokeStyle = 'rgba(0,0,0,.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0,0,r-6,start,end,false);
+    ctx.stroke();
+
+    // text
+    const mid = start + slice/2;
+    ctx.save();
+    ctx.rotate(mid);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#0a0a0a';
+    roundedLabel(ctx, missions[i], r-18, 12);
+    ctx.restore();
+  }
+
+  // center hub
+  ctx.beginPath();
+  ctx.arc(0,0,48,0,Math.PI*2);
+  ctx.fillStyle = '#0b0b0b';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.stroke();
+
+  // "SPIN" text
+  ctx.fillStyle='#e5e7eb';
+  ctx.font = '700 16px system-ui, -apple-system, Segoe UI, Roboto';
+  ctx.textAlign='center';
+  ctx.fillText('SPIN',0,6);
+
+  ctx.restore();
+}
+
+// text helper: right-aligned rounded pill near rim
+function roundedLabel(ctx, text, radius, padY){
+  ctx.font = '700 14px system-ui, -apple-system, Segoe UI, Roboto';
+  const metrics = ctx.measureText(text);
+  const w = Math.min(160, metrics.width + 16);
+  const h = 24;
+  const x = radius;
+  const y = 0 - h/2;
+
+  // background pill
+  ctx.save();
+  ctx.translate(x,0);
+  ctx.beginPath();
+  const rads = 10;
+  ctx.moveTo(-w, y+rads);
+  ctx.quadraticCurveTo(-w, y, -w+rads, y);
+  ctx.lineTo(0-rads, y);
+  ctx.quadraticCurveTo(0, y, 0, y+rads);
+  ctx.lineTo(0, y+h-rads);
+  ctx.quadraticCurveTo(0, y+h, -rads, y+h);
+  ctx.lineTo(-w+rads, y+h);
+  ctx.quadraticCurveTo(-w, y+h, -w, y+h-rads);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  ctx.fill();
+
+  // text
+  ctx.fillStyle = '#0a0a0a';
+  ctx.textAlign='right';
+  ctx.fillText(text, -8, y+h/2+5);
+  ctx.restore();
+}
+
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+// Which mission is under the pointer (top)?
+function indexAtPointer(angle, n){
+  const slice = (Math.PI*2)/n;
+  // pointer angle (canvas coordinates) = -90deg
+  let pointerInWheel = (-Math.PI/2 - angle) % (Math.PI*2);
+  if(pointerInWheel < 0) pointerInWheel += Math.PI*2;
+  return Math.floor(pointerInWheel / slice);
+}
+
+let spinRAF = null;
+function spin(){
+  if(spinning) return;
+  const missions = getMissions();
+  const n = missions.length;
+
+  const secs = Math.max(2, Math.min(8, parseFloat(spinSecs.value)||4));
+  const duration = secs*1000;
+
+  // random total rotation between 4 and 8 full turns plus random offset
+  const extraTurns = 4 + Math.random()*4; // 4..8
+  const offset = Math.random()*Math.PI*2;
+  const start = performance.now();
+  const startAngle = wheelAngle;
+  const targetAngle = startAngle + extraTurns * Math.PI*2 + offset;
+
+  spinning = true;
+  resultText.textContent = 'Spinning...';
+
+  function frame(now){
+    const t = Math.min(1, (now - start)/duration);
+    const eased = easeOutCubic(t);
+    wheelAngle = startAngle + (targetAngle - startAngle) * eased;
+    drawWheel();
+    if(t < 1){
+      spinRAF = requestAnimationFrame(frame);
+    } else {
+      spinning = false;
+      // snap to final angle modulo 2π for clean math/visual
+      wheelAngle = ((wheelAngle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+      const idx = indexAtPointer(wheelAngle, n);
+      resultText.textContent = 'Result: ' + missions[idx];
+      bounceResult();
+    }
+  }
+  cancelAnimationFrame(spinRAF);
+  spinRAF = requestAnimationFrame(frame);
+}
+
+function bounceResult(){
+  const box = document.getElementById('resultBox');
+  box.animate([
+    { transform:'scale(1)', boxShadow:'none' },
+    { transform:'scale(1.06)', boxShadow:'0 0 24px rgba(52,211,153,.35)' },
+    { transform:'scale(1)', boxShadow:'none' }
+  ], { duration:500, easing:'cubic-bezier(.2,.8,.2,1)' });
+}
+
+applyBtn.addEventListener('click', ()=>{ drawWheel(); resultText.textContent='Result: —'; });
+clearBtn.addEventListener('click', ()=>{ missionText.value=''; drawWheel(); resultText.textContent='Result: —'; });
+spinBtn.addEventListener('click', spin);
+shuffleBtn.addEventListener('click', shuffleColors);
+resetAngleBtn.addEventListener('click', ()=>{ if(!spinning){ wheelAngle=0; drawWheel(); }});
+
+missionCount.addEventListener('change', drawWheel);
+missionText.addEventListener('input', ()=>{
+  // keep textarea limited to 11 lines
+  const lines = missionText.value.split('\n').slice(0,11);
+  missionText.value = lines.join('\n');
+});
+drawWheel();
+
+/* -------------------- Timer (accurate countdown + progress) -------------------- */
+const tMin = document.getElementById('tMin');
+const tSec = document.getElementById('tSec');
+const tStart = document.getElementById('tStart');
+const tPause = document.getElementById('tPause');
+const tReset = document.getElementById('tReset');
+const timerFace = document.getElementById('timerFace');
+const timerShell = document.getElementById('timerShell');
+
+let timerTotal = 0;
+let timerRemain = 0;
+let timerTick = null;
+let timerRunning = false;
+let timerLast = 0;
+
+function fmtMMSS(total){
+  const m = Math.floor(total/60);
+  const s = total%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function updateShell(){
+  const p = timerTotal ? ((timerTotal - timerRemain)/timerTotal)*100 : 0;
+  timerShell.style.setProperty('--p', p.toFixed(2)+'%');
+}
+
+function timerStep(now){
+  if(!timerRunning) return;
+  if(!timerLast) timerLast = now;
+  const dt = (now - timerLast)/1000;
+  if(dt >= 1){
+    const steps = Math.floor(dt);
+    timerRemain = Math.max(0, timerRemain - steps);
+    timerLast += steps*1000;
+    timerFace.textContent = fmtMMSS(timerRemain);
+    updateShell();
+    pulseFace();
+    if(timerRemain <= 0){
+      timerRunning = false;
+      cancelAnimationFrame(timerTick);
+      // little alert pulse
+      timerShell.animate([{transform:'scale(1)'}, {transform:'scale(1.06)'}, {transform:'scale(1)'}], {duration:600});
       return;
     }
-    out.innerHTML = "";
-    let count = 0;
-    for(let i=0; i < fontStyles.length && count < 100; i++){
-      const style = fontStyles[i];
-      const styled = transformText(val, style);
-      const div = document.createElement('div');
-      div.className = 'styled-text';
-      div.title = style.name;
-      div.textContent = styled;
-      out.appendChild(div);
-      count++;
-    }
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') btn.click();
-  });
+  }
+  timerTick = requestAnimationFrame(timerStep);
 }
 
-// Helper function transforms input text using given style maps
-function transformText(text, style){
-  let result = "";
-  for(const ch of text){
-    if(ch >= 'A' && ch <= 'Z'){
-      result += style.map[ch.charCodeAt(0)-65] || ch;
-    } else if(ch >= 'a' && ch <= 'z'){
-      result += style.mapLower[ch.charCodeAt(0)-97] || ch;
-    } else {
-      result += ch;
-    }
-  }
-  return result;
+function pulseFace(){
+  timerFace.animate(
+    [{ textShadow:'0 0 0 rgba(255,255,255,0)' }, { textShadow:'0 0 14px rgba(255,255,255,.35)' }, { textShadow:'0 0 0 rgba(255,255,255,0)' }],
+    { duration:220, easing:'ease-out' }
+  );
 }
 
-
-    const btn = document.getElementById('styleBtn');
-    const input = document.getElementById('nameInput');
-    const out = document.getElementById('styledResults');
-
-    btn.addEventListener('click', () => {
-      const v = input.value.trim();
-      if(!v){ out.textContent = 'Please enter text.'; return; }
-      out.innerHTML = '';
-      // show first 10 style variations repeated to reach many (you can replace with more unique maps later)
-      let count = 0;
-      for(let rep=1; rep<=10; rep++){
-        for(let i=0;i<fontStyles.length;i++){
-          if(count>=100) break;
-          const s = transformText(v, fontStyles[i]);
-          const d = document.createElement('div');
-          d.className='styled-text';
-          d.textContent = s;
-          d.title = `${fontStyles[i].name} #${rep}`;
-          out.appendChild(d);
-          count++;
-        }
-      }
-    });
-
-    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') btn.click(); });
-
-  // Calculator
-  function showCalculator(){
-    setToolHTML(`
-      <h2>Simple Calculator</h2>
-      <label for="calcInput">Expression (e.g. 5+3*2):</label>
-      <input id="calcInput" type="text" placeholder="5+3*2" />
-      <button id="calcBtn">Calculate</button>
-      <div class="results" id="calcResult"></div>
-    `);
-    const btn = document.getElementById('calcBtn'), inp = document.getElementById('calcInput'), res = document.getElementById('calcResult');
-    btn.addEventListener('click', () => {
-      const expr = inp.value.trim();
-      if(!expr){ res.textContent='Enter expression.'; return; }
-      if(/[^0-9+\-*/().\s]/.test(expr)){ res.textContent='Invalid characters.'; return; }
-      try{ res.textContent = 'Result: ' + Function('"use strict";return ('+expr+')')(); } catch{ res.textContent='Error in expression.'; }
-    });
-    inp.addEventListener('keydown', e => { if(e.key==='Enter') btn.click(); });
+tStart.addEventListener('click', ()=>{
+  const total = Math.max(0, (parseInt(tMin.value||0)*60) + (parseInt(tSec.value||0)));
+  if(total <= 0){ return; }
+  if(!timerRunning){
+    if(timerRemain<=0 || timerRemain>total){ timerRemain = total; }
+    timerTotal = total;
+    timerRunning = true;
+    timerLast = 0;
+    timerFace.textContent = fmtMMSS(timerRemain);
+    updateShell();
+    cancelAnimationFrame(timerTick);
+    timerTick = requestAnimationFrame(timerStep);
   }
+});
+tPause.addEventListener('click', ()=>{
+  timerRunning = false;
+  cancelAnimationFrame(timerTick);
+});
+tReset.addEventListener('click', ()=>{
+  timerRunning = false;
+  cancelAnimationFrame(timerTick);
+  timerRemain = 0; timerTotal = 0; timerLast = 0;
+  timerFace.textContent = '00:00';
+  timerShell.style.setProperty('--p','0%');
+});
 
-  // To-Do
-  function showTodo(){
-    setToolHTML(`
-      <h2>To-Do List</h2>
-      <label for="todoInput">New task:</label>
-      <input id="todoInput" type="text" placeholder="Add task..." />
-      <button id="addTodoBtn">Add Task</button>
-      <ul id="todoList" style="margin-top:12px; padding-left:18px;"></ul>
-    `);
-    const add = document.getElementById('addTodoBtn'), inp = document.getElementById('todoInput'), ul = document.getElementById('todoList');
-    add.addEventListener('click', ()=>{
-      const t = inp.value.trim(); if(!t) return;
-      const li = document.createElement('li'); li.textContent = t; li.style.cursor='pointer';
-      li.addEventListener('click', ()=> li.remove());
-      ul.appendChild(li); inp.value='';
-    });
-    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') add.click(); });
+/* -------------------- Stopwatch -------------------- */
+const swTime = document.getElementById('swTime');
+const swStart = document.getElementById('swStart');
+const swStop = document.getElementById('swStop');
+const swReset = document.getElementById('swReset');
+
+let swRunning = false;
+let swStartAt = 0;
+let swElapsed = 0;
+let swRAF = null;
+
+function swRender(t){
+  if(swRunning){
+    const now = performance.now();
+    const total = swElapsed + (now - swStartAt);
+    swTime.textContent = swFormat(total);
+    swRAF = requestAnimationFrame(swRender);
   }
+}
+function swFormat(ms){
+  const totalMs = Math.floor(ms);
+  const minutes = Math.floor(totalMs/60000);
+  const seconds = Math.floor((totalMs%60000)/1000);
+  const millis  = totalMs%1000;
+  return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
+}
+swStart.addEventListener('click', ()=>{
+  if(swRunning) return;
+  swRunning = true;
+  swStartAt = performance.now();
+  swRAF = requestAnimationFrame(swRender);
+});
+swStop.addEventListener('click', ()=>{
+  if(!swRunning) return;
+  swRunning = false;
+  swElapsed += (performance.now() - swStartAt);
+  cancelAnimationFrame(swRAF);
+});
+swReset.addEventListener('click', ()=>{
+  swRunning = false;
+  swElapsed = 0;
+  cancelAnimationFrame(swRAF);
+  swTime.textContent = '00:00.000';
+});
 
-  // Quote
-  function showQuote(){
-    const quotes = [
-      "Life is what happens when you're busy making other plans.",
-      "The purpose of our lives is to be happy.",
-      "Get busy living or get busy dying.",
-      "You only live once, but if you do it right, once is enough.",
-      "In the end, we only regret the chances we didn’t take."
-    ];
-    setToolHTML(`
-      <h2>Random Quote</h2>
-      <button id="newQuoteBtn">Get Quote</button>
-      <div class="results" id="quoteDisplay" style="font-style:italic; margin-top:12px;"></div>
-    `);
-    const btn = document.getElementById('newQuoteBtn'), out = document.getElementById('quoteDisplay');
-    function rnd(){ out.textContent = quotes[Math.floor(Math.random()*quotes.length)]; }
-    btn.addEventListener('click', rnd); rnd();
-  }
+/* -------------------- RNG -------------------- */
+const rngBtn = document.getElementById('rngBtn');
+const rngMin = document.getElementById('rngMin');
+const rngMax = document.getElementById('rngMax');
+const rngOut = document.getElementById('rngOut');
+rngBtn.addEventListener('click', ()=>{
+  let a = parseFloat(rngMin.value||0);
+  let b = parseFloat(rngMax.value||0);
+  if(a>b) [a,b]=[b,a];
+  const val = Math.floor(a + Math.random()*(b-a+1));
+  rngOut.textContent = val;
+  rngOut.animate([{transform:'scale(1)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:220, easing:'ease-out'});
+});
 
-  // Temperature converter
-  function showTemp(){
-    setToolHTML(`
-      <h2>Temperature Converter</h2>
-      <label for="tempInput">Temperature:</label>
-      <input id="tempInput" type="number" placeholder="25" />
-      <select id="tempUnit"><option value="c">C → F</option><option value="f">F → C</option></select>
-      <button id="convTemp">Convert</button>
-      <div class="results" id="tempResult"></div>
-    `);
-    const btn = document.getElementById('convTemp'), inp = document.getElementById('tempInput'), unit = document.getElementById('tempUnit'), out = document.getElementById('tempResult');
-    btn.addEventListener('click', ()=>{
-      const v = parseFloat(inp.value); if(isNaN(v)){ out.textContent='Enter valid number.'; return; }
-      if(unit.value==='c'){ out.textContent = `${v} °C = ${((v*9/5)+32).toFixed(2)} °F`; }
-      else { out.textContent = `${v} °F = ${(((v-32)*5/9)).toFixed(2)} °C`; }
-    });
-    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') btn.click(); });
-  }
+/* -------------------- Coin Flip -------------------- */
+const coin = document.getElementById('coin');
+const coinBtn = document.getElementById('coinBtn');
+const coinOut = document.getElementById('coinOut');
+coinBtn.addEventListener('click', ()=>{
+  coin.classList.remove('flip'); // restart animation
+  void coin.offsetWidth;
+  coin.classList.add('flip');
+  const heads = Math.random() < 0.5;
+  coinOut.textContent = heads ? 'Heads' : 'Tails';
+});
 
-  // extra small tools (timer, random number, unit converter)
-  function showTimer(){
-    setToolHTML(`
-      <h2>Simple Timer</h2>
-      <label>Seconds:</label><input id="timerInput" type="number" placeholder="10" />
-      <button id="startTimer">Start</button>
-      <div class="results" id="timerDisplay"></div>
-    `);
-    const start = document.getElementById('startTimer'), inp = document.getElementById('timerInput'), out = document.getElementById('timerDisplay');
-    let tmr=null;
-    start.addEventListener('click', ()=>{
-      clearInterval(tmr);
-      let s = parseInt(inp.value); if(isNaN(s) || s<=0){ out.textContent='Enter positive seconds.'; return; }
-      out.textContent = `Remaining: ${s}s`;
-      tmr = setInterval(()=>{ s--; if(s<=0){ clearInterval(tmr); out.textContent='Time up!'; } else out.textContent=`Remaining: ${s}s`; },1000);
-    });
-  }
-  function showRandNum(){
-    setToolHTML(`
-      <h2>Random Number</h2>
-      <label>Min:</label><input id="minN" type="number" value="1" />
-      <label>Max:</label><input id="maxN" type="number" value="100" />
-      <button id="genNum">Generate</button>
-      <div class="results" id="numRes"></div>
-    `);
-    const gen = document.getElementById('genNum'), out = document.getElementById('numRes');
-    gen.addEventListener('click', ()=>{
-      const a = parseInt(document.getElementById('minN').value), b = parseInt(document.getElementById('maxN').value);
-      if(isNaN(a)||isNaN(b)||a>b){ out.textContent='Enter valid min and max (min ≤ max).'; return; }
-      out.textContent = Math.floor(Math.random()*(b-a+1))+a;
-    });
-  }
-
-  function openTool(name){
-    switch(name){
-      case 'name': showNameStyler(); break;
-      case 'calc': showCalculator(); break;
-      case 'todo': showTodo(); break;
-      case 'quote': showQuote(); break;
-      case 'temp': showTemp(); break;
-      case 'timer': showTimer(); break;
-      case 'randnum': showRandNum(); break;
-      default: setToolHTML(`<h2>Unknown tool</h2>`);
-    }
-  }
-
-  // expose setToolHTML for internal use
-  function setToolHTML(html){ toolContent.innerHTML = html; }
-
-  // optional: open first tool by default
-  // openTool('name');
 </script>
-
 </body>
 </html>
